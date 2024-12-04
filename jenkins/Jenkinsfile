@@ -1,10 +1,15 @@
 pipeline {
     agent any
     stages {
+        stage('Install pytest') {
+            steps {
+                sh 'pip3 install pytest'  // Instala pytest
+            }
+        }
         stage('Check if pytest is installed') {
             steps {
-                sh 'which pytest' // Verifica si pytest está en el PATH
-                sh 'pytest --version' // Muestra la versión de pytest instalada
+                sh 'which pytest'  // Verifica que pytest esté en el PATH
+                sh 'pytest --version'  // Muestra la versión de pytest instalada
             }
         }
         stage('Build') {
@@ -15,21 +20,21 @@ pipeline {
         }
         stage('Test') {
             steps {
-                sh 'pytest --junit-xml test-reports/results.xml sources/test_calc.py'
+                sh 'pytest --junit-xml test-reports/results.xml sources/test_calc.py'  // Ejecuta pytest
             }
             post {
                 always {
-                    junit 'test-reports/results.xml'
+                    junit 'test-reports/results.xml'  // Archiva los resultados de los tests
                 }
             }
         }
-        stage('Deliver') { 
+        stage('Deliver') {
             steps {
-                sh "pyinstaller --onefile sources/add2vals.py" 
+                sh "pyinstaller --onefile sources/add2vals.py"  // Empaqueta el script con PyInstaller
             }
             post {
                 success {
-                    archiveArtifacts 'dist/add2vals' 
+                    archiveArtifacts 'dist/add2vals'  // Archiva el artefacto generado
                 }
             }
         }
