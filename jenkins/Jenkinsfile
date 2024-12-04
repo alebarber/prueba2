@@ -2,6 +2,13 @@ pipeline {
     agent none
     stages {
 
+        stage('Test Workspace') {
+            steps {
+                sh 'touch /var/jenkins_home/workspace/prueba3/test_file.txt'
+                sh 'ls -l /var/jenkins_home/workspace/prueba3'
+            }
+        }
+
         stage('Build') {
             agent {
                 docker {
