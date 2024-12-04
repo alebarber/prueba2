@@ -1,19 +1,13 @@
 pipeline {
     agent none
     stages {
-        // Etapa de verificación de Docker
-        stage('Check Docker') {
-            agent any
-            steps {
-                // Verifica que Docker esté instalado y accesible
-                sh 'docker --version'
-            }
-        }
 
         stage('Build') {
             agent {
                 docker {
                     image 'python:2-alpine'
+                    args '--user root'  // Agregamos este argumento para usar root
+
                 }
             }
             steps {
