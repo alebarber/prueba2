@@ -2,7 +2,7 @@ pipeline {
     agent {
         docker {
             image 'docker:20.10.12-dind'
-            args '-p 2375:2375'
+            args '-u root'
         }
     }
     stages {
