@@ -1,8 +1,5 @@
 pipeline {
     agent any
-    environment {
-        DOCKER_HOST = 'tcp://docker_in_docker:2375'
-    }
     stages {
         stage('Build') {
             agent {
