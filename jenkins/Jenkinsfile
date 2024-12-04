@@ -1,35 +1,20 @@
 pipeline {
-    agent any
-    environment {
-        // Apuntar al contenedor DinD expuesto en la red de Jenkins
-        DOCKER_HOST = 'tcp://docker_in_docker:2375'
-    }
+    agent none
     stages {
         stage('Build') {
             agent {
                 docker {
                     image 'python:2-alpine'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock -v /var/jenkins_home/workspace:/var/jenkins_home/workspace'
                 }
             }
             steps {
-                // Crear el directorio de trabajo si no existe
-                sh '''
-                    mkdir -p /var/jenkins_home/workspace/prueba3@2
-                    echo "Directorio creado: /var/jenkins_home/workspace/prueba3@2"
-                '''
-                sh 'apk update && apk add docker'
-                sh 'docker info'  // Se conectará al Docker DinD en lugar del socket del host
-                sh 'python --version'
                 sh 'python -m py_compile sources/add2vals.py sources/calc.py'
             }
         }
-
         stage('Test') {
             agent {
                 docker {
                     image 'qnib/pytest'
-                    args '-u root -v /var/jenkins_home/workspace:/var/jenkins_home/workspace'
                 }
             }
             steps {
@@ -37,28 +22,23 @@ pipeline {
             }
             post {
                 always {
-                    junit '**/test-reports/*.xml'
+                    junit 'test-reports/results.xml'
                 }
             }
         }
-
         stage('Deliver') {
             agent {
                 docker {
-                    image 'ubuntu:20.04'
-                    args '-u root -v /var/jenkins_home/workspace:/var/jenkins_home/workspace'
+                    image 'cdrx/pyinstaller-linux:python2'
                 }
             }
             steps {
-                sh '''
-                    apt-get update
-                    apt-get install -y python3 python3-pip
-                    pip3 install pyinstaller
-                    pyinstaller --onefile sources/add2vals.py
-                    cp sources/dist/add2vals ../add2vals
-                    echo "Ejecutable compilado correctamente."
-                '''
-                archiveArtifacts artifacts: 'sources/dist/add2vals'
+                sh 'pyinstaller --onefile sources/add2vals.py'
+            }
+            post {
+                success {
+                    archiveArtifacts 'dist/add2vals'
+                }
             }
         }
     }
