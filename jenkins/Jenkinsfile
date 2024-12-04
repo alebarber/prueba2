@@ -6,6 +6,13 @@ pipeline {
         }
     }
     stages {
+        stage('Setup') {
+            steps {
+                script {
+                    sh 'apt-get update && apt-get install -y python3'
+                }
+            }
+        }
         stage('Build') {
             steps {
                 dir('/var/jenkins_home/workspace/prueba3@2') {
