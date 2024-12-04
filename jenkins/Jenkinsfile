@@ -1,9 +1,7 @@
 pipeline {
-    agent {
-        docker {
-            image 'python:3'  // Asegúrate de usar una imagen que tenga Python
-            args '-u root'    // Puedes agregar otros argumentos si es necesario
-        }
+    agent any
+    environment {
+        DOCKER_HOST = 'tcp://docker_in_docker:2375'  // Usar el contenedor DinD
     }
     options {
         skipStagesAfterUnstable()
