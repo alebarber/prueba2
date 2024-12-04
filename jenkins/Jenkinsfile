@@ -1,56 +1,45 @@
 pipeline {
     agent any
-
-    environment {
-        VENV_DIR = './venv'  // Definir el directorio para el entorno virtual
+    options {
+        skipStagesAfterUnstable()  // Evita que las etapas posteriores se ejecuten si el pipeline está inestable
     }
-
     stages {
-        stage('Checkout') {
+        // Etapa de compilación
+        stage('Build') {
             steps {
-                checkout scm
+                // Compilar el código fuente Python en bytecode
+                sh 'python -m py_compile sources/add2vals.py sources/calc.py'
+                // Guardar los archivos compilados para uso posterior
+                stash(name: 'compiled-results', includes: 'sources/*.py*')
             }
         }
-
-        stage('Setup') {
-            steps {
-                script {
-                    // Crear un entorno virtual y activar
-                    sh 'python3 -m venv $VENV_DIR'
-                    sh 'source $VENV_DIR/bin/activate && pip install --upgrade pip'
-                }
-            }
-        }
-
-        stage('Install Dependencies') {
-            steps {
-                script {
-                    // Instalar pytest en el entorno virtual
-                    sh 'source $VENV_DIR/bin/activate && pip install pytest'
-                }
-            }
-        }
-
+        
+        // Etapa de pruebas
         stage('Test') {
             steps {
-                script {
-                    // Ejecutar pruebas
-                    sh 'source $VENV_DIR/bin/activate && python -m pytest --junit-xml test-reports/results.xml sources/test_calc.py'
+                // Ejecutar las pruebas con pytest y generar un reporte XML
+                sh 'pytest --junit-xml test-reports/results.xml sources/test_calc.py'
+            }
+            post {
+                // Siempre archivar los resultados de las pruebas
+                always {
+                    junit 'test-reports/results.xml'
                 }
             }
         }
-
-        stage('Archive Test Results') {
+        
+        // Etapa de entrega
+        stage('Deliver') {
             steps {
-                junit 'test-reports/results.xml'
+                // Usar PyInstaller para generar el ejecutable de un solo archivo
+                sh "pyinstaller --onefile sources/add2vals.py"
             }
-        }
-    }
-
-    post {
-        always {
-            // Limpiar entorno
-            sh 'rm -rf $VENV_DIR'
+            post {
+                success {
+                    // Archivar el artefacto (el ejecutable generado)
+                    archiveArtifacts 'dist/add2vals'
+                }
+            }
         }
     }
 }
