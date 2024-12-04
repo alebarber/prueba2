@@ -8,18 +8,14 @@ pipeline {
             agent {
                 docker {
                     image 'python:2-alpine'
-                    args '-v /var/run/docker.sock:/var/run/docker.sock -v /var/jenkins_home/workspace:/var/jenkins_home/workspace'
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
-                // Crear el directorio de trabajo si no existe
-                sh '''
-                    mkdir -p /var/jenkins_home/workspace/prueba3
-                    echo "Directorio creado: /var/jenkins_home/workspace/prueba3"
-                '''
                 sh 'apk update && apk add docker'
-                sh 'docker info'  // Se conectará al Docker DinD en lugar del socket del host
+                sh 'docker info'
                 sh 'python --version'
+                
                 sh 'python -m py_compile sources/add2vals.py sources/calc.py'
             }
         }
