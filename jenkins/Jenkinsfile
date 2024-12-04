@@ -1,6 +1,15 @@
 pipeline {
     agent none
     stages {
+        // Etapa de verificación de Docker
+        stage('Check Docker') {
+            agent any
+            steps {
+                // Verifica que Docker esté instalado y accesible
+                sh 'docker --version'
+            }
+        }
+
         stage('Build') {
             agent {
                 docker {
@@ -11,6 +20,7 @@ pipeline {
                 sh 'python -m py_compile sources/add2vals.py sources/calc.py'
             }
         }
+
         stage('Test') {
             agent {
                 docker {
@@ -18,7 +28,7 @@ pipeline {
                 }
             }
             steps {
-                sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
+                sh 'pytest --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
             }
             post {
                 always {
@@ -26,6 +36,7 @@ pipeline {
                 }
             }
         }
+
         stage('Deliver') {
             agent {
                 docker {
