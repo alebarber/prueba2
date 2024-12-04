@@ -1,18 +1,21 @@
 pipeline {
     agent any
-    options {
-        skipStagesAfterUnstable()
-    }
     stages {
+        stage('Check if pytest is installed') {
+            steps {
+                sh 'which pytest' // Verifica si pytest está en el PATH
+                sh 'pytest --version' // Muestra la versión de pytest instalada
+            }
+        }
         stage('Build') {
             steps {
-                sh 'python3 -m py_compile sources/add2vals.py sources/calc.py'  // Usar python3 directamente
+                sh 'python3 -m py_compile sources/add2vals.py sources/calc.py'
                 stash(name: 'compiled-results', includes: 'sources/*.py*')
             }
         }
         stage('Test') {
             steps {
-                sh 'py.test --junit-xml test-reports/results.xml sources/test_calc.py'
+                sh 'pytest --junit-xml test-reports/results.xml sources/test_calc.py'
             }
             post {
                 always {
