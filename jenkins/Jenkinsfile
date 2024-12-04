@@ -25,32 +25,61 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'qnib/pytest'
+                    image 'qnib/pytest'  // Imagen Docker para ejecutar las pruebas
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'  // Montaje de Docker socket
                 }
             }
             steps {
-                sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
+                script {
+                    // Ejecuta las pruebas con pytest
+                    sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
+                }
             }
             post {
                 always {
-                    junit 'test-reports/results.xml'
+                    junit '**/test-reports/*.xml'  // resultados pruebas
                 }
             }
         }
+
         stage('Deliver') {
             agent {
                 docker {
-                    image 'cdrx/pyinstaller-linux:python2'
+                    image 'ubuntu:20.04'  
+                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
-                sh 'pyinstaller --onefile sources/add2vals.py'
-            }
-            post {
-                success {
-                    archiveArtifacts 'dist/add2vals'
-                }
+                sh '''
+                    echo "Iniciando contenedor..."
+                    
+                    # Actualizar paquetes
+                    apt-get update
+                    
+                    # Instalar dependencias necesarias
+                    apt-get install -y python3 python3-pip
+                    
+                    # Instalar PyInstaller
+                    pip3 install pyinstaller
+                    
+                    # Verificar que PyInstaller esté instalado
+                    pyinstaller --version
+                    
+                    # Compilar el ejecutable
+                    cd sources
+                    pyinstaller --onefile add2vals.py
+                    
+                    # Verificar que se haya creado el ejecutable
+                    ls dist/add2vals
+                    
+                    # Copiar el ejecutable al directorio de trabajo
+                    cp dist/add2vals ../add2vals
+                    
+                    echo "Ejecutable compilado correctamente."
+                '''
+                
+                archiveArtifacts artifacts: 'sources/dist/add2vals'
             }
         }
-    }
+    }  
 }
