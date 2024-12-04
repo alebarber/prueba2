@@ -1,23 +1,21 @@
 pipeline {
-    agent {
-        docker {
-            image 'docker:20.10.12-dind'
-            args '-u root'
-        }
+    agent any
+    environment {
+        // Apuntar al contenedor DinD expuesto en la red de Jenkins
+        DOCKER_HOST = 'tcp://docker_in_docker:2375'
     }
     stages {
         stage('Build') {
             agent {
                 docker {
                     image 'python:2-alpine'
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                    args '-u root'
                 }
             }
             steps {
                 sh 'apk update && apk add docker'
-                sh 'docker info'
+                sh 'docker info'  // Se conectará al Docker DinD en lugar del socket del host
                 sh 'python --version'
-                
                 sh 'python -m py_compile sources/add2vals.py sources/calc.py'
             }
         }
@@ -25,19 +23,16 @@ pipeline {
         stage('Test') {
             agent {
                 docker {
-                    image 'qnib/pytest'  // Imagen Docker para ejecutar las pruebas
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'  // Montaje de Docker socket
+                    image 'qnib/pytest'
+                    args '-u root'
                 }
             }
             steps {
-                script {
-                    // Ejecuta las pruebas con pytest
-                    sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
-                }
+                sh 'py.test --verbose --junit-xml test-reports/results.xml sources/test_calc.py'
             }
             post {
                 always {
-                    junit '**/test-reports/*.xml'  // resultados pruebas
+                    junit '**/test-reports/*.xml'
                 }
             }
         }
@@ -45,41 +40,21 @@ pipeline {
         stage('Deliver') {
             agent {
                 docker {
-                    image 'ubuntu:20.04'  
-                    args '-u root -v /var/run/docker.sock:/var/run/docker.sock'
+                    image 'ubuntu:20.04'
+                    args '-u root'
                 }
             }
             steps {
                 sh '''
-                    echo "Iniciando contenedor..."
-                    
-                    # Actualizar paquetes
                     apt-get update
-                    
-                    # Instalar dependencias necesarias
                     apt-get install -y python3 python3-pip
-                    
-                    # Instalar PyInstaller
                     pip3 install pyinstaller
-                    
-                    # Verificar que PyInstaller esté instalado
-                    pyinstaller --version
-                    
-                    # Compilar el ejecutable
-                    cd sources
-                    pyinstaller --onefile add2vals.py
-                    
-                    # Verificar que se haya creado el ejecutable
-                    ls dist/add2vals
-                    
-                    # Copiar el ejecutable al directorio de trabajo
-                    cp dist/add2vals ../add2vals
-                    
+                    pyinstaller --onefile sources/add2vals.py
+                    cp sources/dist/add2vals ../add2vals
                     echo "Ejecutable compilado correctamente."
                 '''
-                
                 archiveArtifacts artifacts: 'sources/dist/add2vals'
             }
         }
-    }  
+    }
 }
