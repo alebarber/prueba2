@@ -8,7 +8,7 @@ pipeline {
         stage('Build') {
             steps {
                 // Compilar el código fuente Python en bytecode
-                sh 'python -m py_compile sources/add2vals.py sources/calc.py'
+                sh 'python3 -m py_compile sources/add2vals.py sources/calc.py'
                 // Guardar los archivos compilados para uso posterior
                 stash(name: 'compiled-results', includes: 'sources/*.py*')
             }
