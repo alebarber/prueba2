@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'python:3'  // Asegúrate de usar una imagen que tenga Python
+            args '-u root'    // Puedes agregar otros argumentos si es necesario
+        }
+    }
     options {
         skipStagesAfterUnstable()
     }
