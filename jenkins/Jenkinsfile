@@ -11,7 +11,13 @@ pipeline {
                 }
             }
             steps {
-                sh 'python3 -m py_compile sources/add2vals.py sources/calc.py'
+                dir('/var/jenkins_home/workspace/prueba3@2') {
+                    sh '''
+                    echo "Working directory: $(pwd)"
+                    ls -la
+                    python -m py_compile sources/add2vals.py sources/calc.py
+                    '''
+                }
             }
         }
 
