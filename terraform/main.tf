@@ -2,59 +2,90 @@ terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 3.0.2"
+      version = "~> 3.0.1"
     }
   }
 }
 
-provider "docker" {
-  host = "npipe:////.//pipe//docker_engine"
-}
-
-# Crear red 
 resource "docker_network" "jenkins_network" {
   name = "jenkins"
 }
 
-resource "docker_container" "jenkins" {
-  name  = "jenkins-blueocean"
-  image = "jenkins-custom"  # imagen personalizada
+resource "docker_volume" "jenkins_data" {
+  name = "jenkins-data"
+}
 
-  restart = "on-failure"  
+resource "docker_volume" "jenkins_docker_certs" {
+  name = "jenkins-docker-certs"
+}
 
-  network_mode = docker_network.jenkins_network.name
+resource "docker_container" "docker_in_docker" {
+  image      = "docker:dind"
+  name       = "jenkins-docker"
+  rm         = true
+  privileged = true
+  
+  networks_advanced {
+    name     = docker_network.jenkins_network.name
+    aliases  = ["docker"]  
+  }
+  
+  env = [
+    "DOCKER_TLS_CERTDIR=/certs"
+  ]
+  
+  volumes {
+    container_path = "/var/jenkins_home"
+    volume_name    = docker_volume.jenkins_data.name
+  }
+  
+  volumes {
+    container_path = "/certs/client"
+    volume_name    = docker_volume.jenkins_docker_certs.name
+  }
+  
+  ports {
+    internal = 2376
+    external = 2376
+  }
+}
 
-
+resource "docker_container" "jenkins_blueocean" {
+  image   = "jenkins-custom"
+  name    = "jenkins-blueocean"
+  restart = "on-failure"
+  
+  networks_advanced {
+    name     = docker_network.jenkins_network.name
+    aliases  = ["docker"]  
+  }
+  
+  env = [
+    "DOCKER_HOST=tcp://docker:2376", 
+    "DOCKER_CERT_PATH=/certs/client",
+    "DOCKER_TLS_VERIFY=1"
+  ]
+  
   ports {
     internal = 8080
     external = 8080
   }
-
+  
   ports {
     internal = 50000
     external = 50000
   }
-
-  # Volumen persistente para los datos de Jenkins
+  
   volumes {
     container_path = "/var/jenkins_home"
-    read_only      = false
+    volume_name    = docker_volume.jenkins_data.name
+  }
+  
+  volumes {
+    container_path = "/certs/client"
+    volume_name    = docker_volume.jenkins_docker_certs.name
+    read_only      = true
   }
 
-  privileged = true
-
-}
-
-resource "docker_container" "docker_in_docker" {
-  name  = "docker_in_docker"
-  image = "docker:20.10.12-dind"
-  privileged = true
-  ports {
-    internal = 2375
-    external = 2375
-  }
-  network_mode = docker_network.jenkins_network.name
-  env = [
-    "DOCKER_TLS_CERTDIR="  
-  ]
+  depends_on = [docker_container.docker_in_docker]
 }
