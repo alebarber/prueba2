@@ -62,27 +62,32 @@ RUN jenkins-plugin-cli --plugins "blueocean docker-workflow token-macro json-pat
 Este archivo configura la infraestructura necesaria utilizando Terraform. Crea una red Docker y dos contenedores, uno para Jenkins y otro para la ejecución de Docker dentro de Jenkins (DinD).
 
 ```
+# Versión del proveedor docker
 terraform {
   required_providers {
     docker = {
       source  = "kreuzwerker/docker"
-      version = "~> 3.0.1"
+      version = "~> 3.0.1" 
     }
   }
 }
 
+#Creamos la red Docker 
 resource "docker_network" "jenkins_network" {
   name = "jenkins"
 }
 
+#Volumen para almacenar datos de Jenkinks
 resource "docker_volume" "jenkins_data" {
   name = "jenkins-data"
 }
 
+#Volumen para almacenar los certificados TLS
 resource "docker_volume" "jenkins_docker_certs" {
   name = "jenkins-docker-certs"
 }
 
+#Contenedor Docker in Docker
 resource "docker_container" "docker_in_docker" {
   image      = "docker:dind"
   name       = "jenkins-docker"
@@ -97,7 +102,8 @@ resource "docker_container" "docker_in_docker" {
   env = [
     "DOCKER_TLS_CERTDIR=/certs"
   ]
-  
+
+# Volúmenes para datos y certificados
   volumes {
     container_path = "/var/jenkins_home"
     volume_name    = docker_volume.jenkins_data.name
@@ -114,6 +120,7 @@ resource "docker_container" "docker_in_docker" {
   }
 }
 
+# Contenedor principal de Jenkins
 resource "docker_container" "jenkins_blueocean" {
   image   = "jenkins-custom"
   name    = "jenkins-blueocean"
@@ -123,23 +130,27 @@ resource "docker_container" "jenkins_blueocean" {
     name     = docker_network.jenkins_network.name
     aliases  = ["docker"]  
   }
-  
+
+# Variables de entorno para usar Docker desde Jenkins
   env = [
     "DOCKER_HOST=tcp://docker:2376", 
     "DOCKER_CERT_PATH=/certs/client",
     "DOCKER_TLS_VERIFY=1"
   ]
-  
+
+#Interfaz web de jenkins  
   ports {
     internal = 8080
     external = 8080
   }
-  
+
+#Agentes de Jenkins
   ports {
     internal = 50000
     external = 50000
   }
-  
+
+  # Volúmenes para persistencia de datos y certificados
   volumes {
     container_path = "/var/jenkins_home"
     volume_name    = docker_volume.jenkins_data.name
@@ -151,6 +162,7 @@ resource "docker_container" "jenkins_blueocean" {
     read_only      = true
   }
 
+# Garantiza que el contenedor DinD esté listo antes de iniciar Jenkins
   depends_on = [docker_container.docker_in_docker]
 }
 ```
